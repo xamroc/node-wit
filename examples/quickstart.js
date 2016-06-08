@@ -43,7 +43,7 @@ const actions = {
   error(sessionId, context, error) {
     console.log(error.message);
   },
-  ['fetch-weather'](sessionId, context, cb) {
+  ['fetch-weather'](sessionId, context, entities, cb) {
     // Here should go the api call, e.g.:
     // context.forecast = apiCall(context.loc)
     context.forecast = 'sunny';

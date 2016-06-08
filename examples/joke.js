@@ -63,7 +63,7 @@ const actions = {
   error(sessionId, context, error) {
     console.log(error.message);
   },
-  ['select-joke'](sessionId, context, cb) {
+  ['select-joke'](sessionId, context, entities, cb) {
     const jokes = allJokes[context.cat || 'default'];
     context.joke = jokes[Math.floor(Math.random() * jokes.length)];
     cb(context);
