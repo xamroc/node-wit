@@ -34,9 +34,12 @@ const actions = {
   },
   merge(sessionId, context, entities, message, cb) {
     // Retrieve the location entity and store it into a context field
-    const loc = firstEntityValue(entities, 'location');
-    if (loc) {
-      context.loc = loc;
+    const foodOrder = firstEntityValue(entities, 'agenda_entry');
+    // console.log("foodOrder", foodOrder);
+    const quantity = firstEntityValue(entities, 'number');
+    // console.log("quantity", quantity);
+    if (foodOrder) {
+      context.order = foodOrder;
     }
     cb(context);
   },

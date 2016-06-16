@@ -16,6 +16,85 @@
 const bodyParser = require('body-parser');
 const express = require('express');
 const request = require('request');
+const config = require('config');
+
+/*
+ * Call the Send API. The message data goes in the body. If successful, we'll 
+ * get the message id in a response 
+ *
+ */
+function callSendAPI(messageData) {
+  request({
+    uri: 'https://graph.facebook.com/v2.6/me/messages',
+    qs: { access_token: FB_PAGE_TOKEN },
+    method: 'POST',
+    json: messageData
+
+  }, function (error, response, body) {
+    if (!error && response.statusCode == 200) {
+      var recipientId = body.recipient_id;
+      var messageId = body.message_id;
+
+      console.log("Successfully sent generic message with id %s to recipient %s", 
+        messageId, recipientId);
+    } else {
+      console.error("Unable to send message.");
+      console.error(response);
+      console.error(error);
+    }
+  });  
+}
+
+/*
+ * Send a Structured Message (Generic Message type) using the Send API.
+ *
+ */
+function sendGenericMessage(recipientId) {
+  var messageData = {
+    recipient: {
+      id: recipientId
+    },
+    message: {
+      attachment: {
+        type: "template",
+        payload: {
+          template_type: "generic",
+          elements: [{
+            title: "Cheeseburger",
+            subtitle: "The answer to Tuesdays",
+            item_url: "http://www.mcdonalds.com/us/en/food/product_nutrition.burgerssandwiches.3.cheeseburger.html",
+            image_url: "http://www.burgerweb.com/wp-content/uploads/2015/09/cheeseburger.jpg",
+            buttons: [{
+              type: "web_url",
+              url: "http://www.mcdonalds.com/us/en/food/product_nutrition.burgerssandwiches.3.cheeseburger.html",
+              title: "Learn More"
+            }, {
+              type: "postback",
+              title: "Call Postback",
+              payload: "Payload for first bubble",
+            }],
+          }, {
+            title: "Fries",
+            subtitle: "Tuesday is complete",
+            item_url: "http://www.mcdonalds.com/us/en/your_questions/our_food/what-are-the-ingredients-in-your-fries.html",
+            image_url: "https://secure.static.tumblr.com/07a173112a29a72d85d5e21fcb705e9e/tdbhgoa/655n845hf/tumblr_static_tumblr_static_1xmt88eend0goccssk084csg8_640.jpg",
+            buttons: [{
+              type: "web_url",
+              url: "http://www.mcdonalds.com/us/en/your_questions/our_food/what-are-the-ingredients-in-your-fries.html",
+              title: "Learn More"
+            }, {
+              type: "postback",
+              title: "Call Postback",
+              payload: "Payload for second bubble",
+            }]
+          }]
+        }
+      }
+    }
+  };  
+
+  callSendAPI(messageData);
+}
 
 // When not cloning the `node-wit` repo, replace the `require` like so:
 // const Wit = require('node-wit').Wit;
@@ -25,18 +104,18 @@ const Wit = require('../').Wit;
 const PORT = process.env.PORT || 8445;
 
 // Wit.ai parameters
-const WIT_TOKEN = process.env.WIT_TOKEN;
+const WIT_TOKEN = (process.env.WIT_TOKEN) ? process.env.WIT_TOKEN : config.get('witToken');
 
 // Messenger API parameters
-const FB_PAGE_ID = process.env.FB_PAGE_ID;
+const FB_PAGE_ID = (process.env.FB_PAGE_ID) ? process.env.FB_PAGE_ID : config.get('fbPageId');
 if (!FB_PAGE_ID) {
   throw new Error('missing FB_PAGE_ID');
 }
-const FB_PAGE_TOKEN = process.env.FB_PAGE_TOKEN;
+const FB_PAGE_TOKEN = (process.env.FB_PAGE_TOKEN) ? process.env.FB_PAGE_TOKEN : config.get('pageAccessToken');
 if (!FB_PAGE_TOKEN) {
   throw new Error('missing FB_PAGE_TOKEN');
 }
-const FB_VERIFY_TOKEN = process.env.FB_VERIFY_TOKEN;
+const FB_VERIFY_TOKEN = (process.env.FB_VERIFY_TOKEN) ? process.env.FB_VERIFY_TOKEN : config.get('validationToken');
 
 // Messenger API specific code
 
@@ -49,6 +128,18 @@ const fbReq = request.defaults({
   qs: { access_token: FB_PAGE_TOKEN },
   headers: {'Content-Type': 'application/json'},
 });
+
+const firstEntityValue = (entities, entity) => {
+  const val = entities && entities[entity] &&
+    Array.isArray(entities[entity]) &&
+    entities[entity].length > 0 &&
+    entities[entity][0].value
+  ;
+  if (!val) {
+    return null;
+  }
+  return typeof val === 'object' ? val.value : val;
+};
 
 const fbMessage = (recipientId, msg, cb) => {
   const opts = {
@@ -143,6 +234,10 @@ const actions = {
   error(sessionId, context, error) {
     console.log(error.message);
   },
+  ['show-menu'](sessionId, context, cb) {
+    context.confirmation = 'Let me get you the menu';
+    cb(context);
+  },
   // You should implement your custom actions here
   // See https://wit.ai/docs/quickstart
 };
@@ -218,6 +313,11 @@ app.post('/fb', (req, res) => {
             // if (context['done']) {
             //   delete sessions[sessionId];
             // }
+
+            if (context['confirmation']) {
+              delete context['confirmation'];
+              sendGenericMessage(sender);
+            }
 
             // Updating the user's current session state
             sessions[sessionId].context = context;

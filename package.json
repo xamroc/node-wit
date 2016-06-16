@@ -20,5 +20,8 @@
   "dependencies": {
     "node-fetch": "^1.5.1",
     "node-uuid": "^1.4.7"
+  },
+  "devDependencies": {
+    "config": "^1.21.0"
   }
 }
