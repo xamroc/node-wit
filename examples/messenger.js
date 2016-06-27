@@ -70,8 +70,8 @@ function sendGenericMessage(recipientId) {
               title: "Learn More"
             }, {
               type: "postback",
-              title: "Call Postback",
-              payload: "Payload for first bubble",
+              title: "Buy Item",
+              payload: "cheeseburger",
             }],
           }, {
             title: "Fries",
@@ -84,8 +84,8 @@ function sendGenericMessage(recipientId) {
               title: "Learn More"
             }, {
               type: "postback",
-              title: "Call Postback",
-              payload: "Payload for second bubble",
+              title: "Buy Item",
+              payload: "fries",
             }]
           }]
         }
@@ -94,6 +94,23 @@ function sendGenericMessage(recipientId) {
   };  
 
   callSendAPI(messageData);
+}
+
+function receivedPostback(event) {
+  var senderID = event.sender.id;
+  var recipientID = event.recipient.id;
+  var timeOfPostback = event.timestamp;
+
+  // The 'payload' param is a developer-defined field which is set in a postback 
+  // button for Structured Messages. 
+  var payload = event.postback.payload;
+
+  console.log("Received postback for user %d and page %d with payload '%s' " + 
+    "at %d", senderID, recipientID, payload, timeOfPostback);
+
+  // When a postback is called, we'll send a message back to the sender to 
+  // let them know it was successful
+  fbMessage(senderID, "You made an order for " + payload);
 }
 
 // When not cloning the `node-wit` repo, replace the `require` like so:
@@ -267,6 +284,21 @@ app.get('/fb', (req, res) => {
 // Message handler
 app.post('/fb', (req, res) => {
   // Parsing the Messenger API response
+  var data = req.body;
+
+  if (data.object == 'page') {
+
+    data.entry.forEach(function(pageEntry) {
+      var pageID = pageEntry.id;
+      var timeOfEvent = pageEntry.time;
+
+      pageEntry.messaging.forEach(function(messagingEvent) {
+        if (messagingEvent.postback) {
+          receivedPostback(messagingEvent);
+        }
+      });
+    });
+  }
   const messaging = getFirstMessagingEntry(req.body);
   if (messaging && messaging.message && messaging.recipient.id === FB_PAGE_ID) {
     // Yay! We got a new message!
